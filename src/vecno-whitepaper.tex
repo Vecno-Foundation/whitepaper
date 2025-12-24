@@ -45,7 +45,7 @@
 
 \vspace{7cm}
 
-\footnotesize{\textit{Vecno builds upon lessons learned from earlier blockchain innovations such as Bitcoin and Ethereum, while overcoming their limitations. By implementing PoH, BlockDAGs and occationally PoW alongside practical use-cases, Vecno provides a strong foundation for decentralized applications, digital assets, and secure financial systems. This whitepaper outlines Vecno’s core philosophy, technical advancements, and future roadmap.}}
+\footnotesize{\textit{Vecno builds upon lessons learned from earlier blockchain innovations such as Bitcoin and Ethereum, while overcoming their limitations. By implementing PoH, BlockDAGs and occasionally PoW alongside practical use-cases, Vecno provides a strong foundation for decentralized applications, digital assets, and secure financial systems. This whitepaper outlines Vecno’s core philosophy, technical advancements, and future roadmap.}}
 
 \newpage
 
@@ -92,7 +92,7 @@ The block rewards will continue to decrease until they hit 0.001 \texttt{VE} per
 
 \vspace{0.3cm}
 
-\subsection{Commodity}\label{sec2.1}
+\subsection{Commodity}\label{sec1.1}
 
 The \texttt{VE} asset functions as more than just a utility for the Vecno network; it is regarded as a commodity due to its inherent value derived from its utility, scarcity, and decentralized nature. Similar to commodities like oil or precious metals, \texttt{VE} has real-world economic applications within the Vecno ecosystem and plays a critical role in the network's operations. It is the necessary `fuel' for executing smart contracts, processing transactions, and securing the network through validator participation.
 However, it is important to note that \texttt{VE} is not considered an investment. Its primary function is to serve the operational needs of the network, facilitating transactions and providing utility within the Vecno ecosystem. \texttt{VE} holders engage with the network to secure the blockchain, and utilize its decentralized applications, rather than seeking speculative financial returns.
@@ -100,56 +100,54 @@ However, it is important to note that \texttt{VE} is not considered an investmen
 The supply of \texttt{VE}, capped at 200 million, ensures that as demand for its utility increases, its scarcity will drive value over time. This economic model, combined with the controlled release of new \texttt{VE} through diminishing block rewards, mirrors traditional commodities in that the supply is limited, and extraction becomes more difficult over time.
 In addition, \texttt{VE}’s decentralized nature ensures that no central authority controls the currency. Its role in governing the network and compensating validators means that it serves as a tangible, tradeable asset with a clear value proposition in the broader cryptocurrency markets. This blend of functionality, scarcity, and economic relevance qualifies \texttt{VE} as a commodity, ensuring its place as a valuable and essential asset within both the Vecno network and the wider blockchain economy.
 
-\vspace{0.3cm}
+\subsection{MemHash Algorithm}\label{sec1.2}
 
-\newpage
-\section{Proof Of Work and Proof Of History Consensus}
+The MemHash algorithm is a custom Proof-of-Work mechanism designed specifically for the Vecno blockchain. Its goal is to secure the network in a way that is fair, energy-efficient in context, and resistant to domination by specialized hardware (like ASICs). This promotes true decentralization by allowing anyone with a standard CPU or GPU to participate in mining effectively. 
 
-Vecno aims to publish a unique combination of Proof-of-Work (PoW) and Proof-of-History (PoH) to create a secure, scalable blockchain. Unlike many other blockchains moving towards Proof-of-Stake (PoS), Vecno enhances traditional PoW with PoH, leveraging its efficient time-stamping mechanism for optimized blockchain performance.
+MemHash is built on top of BLAKE3, one of the fastest and most secure cryptographic hash functions available today. BLAKE3 is much quicker than older functions like SHA-256 (used in Bitcoin) or Keccak (used in old Ethereum), while providing strong protection against attacks.
+To make the algorithm memory-hard, MemHash adds layers that require accessing a moderate amount of memory in an unpredictable way. This slows down specialized hardware (which excels at pure computation) but doesn't heavily impact regular computers. The result is a balanced PoW that encourages broad participation.
+MemHash takes three inputs to create a unique puzzle for miners: \\ (i) The previous block's hash (32 bytes, linking to the blockchain history). \\ (ii) A timestamp (to incorporate time). \\ (iii) A nonce (a number the miner tries different values for, to solve the puzzle).
 
-Proof-of-Work (PoW) is renowned for its security and decentralization, as seen in networks like Bitcoin. In PoW, miners solve complex cryptographic puzzles to validate transactions and add new blocks to the blockchain, earning rewards for their efforts. This mechanism, while secure, is energy-intensive and can limit transaction throughput due to the time taken to solve these puzzles. Vecno addresses this by using PoW intermittently for enhanced security, while the bulk of transaction validation is handled by PoH, integrated with a BlockDAG structure for parallel block processing.
+The algorithm runs in several phases: \\ (i) Initialization (Setup Phase): A small substitution box (S-box, 64 bytes) is generated using BLAKE3 seeded from the input hash. This S-box acts like a random lookup table unique to each block. The number of rounds (between 16 and 23) is calculated dynamically using BLAKE3 on the input hash and timestamp. This adds variability so no two blocks have exactly the same difficulty structure. An initial 256-bit state (8 × 32-bit words) is derived directly from the input hash. \\ (ii) Pre-Mixing Phase (Intense Hashing Warm-Up): The initial state is repeatedly hashed with BLAKE3 (twice the number of rounds, split into two identical loops). After each BLAKE3 hash, simple bit manipulations are applied (XORing certain bytes together) to mix the data further. This phase thoroughly scrambles the state using fast hashing, creating a strong starting point.
+\\ (iii) Main Mixing Phase (Memory-Hard Core): For each round (16–23 times): For each of the 8 state words: A BLAKE3 hash is computed using the current word, round number, and nonce. This creates data-dependent values. The result is XOR-mixed with the full current state. The state word is updated by XORing, then applying one of four operations (add, subtract, rotate, or XOR) chosen pseudo-randomly. Finally, the word's bytes are used as offsets to look up values in the unique S-box, replacing the word with the looked-up bytes interpreted as a new 32-bit value. These unpredictable S-box lookups make the process memory-hard: the algorithm must frequently access scattered memory locations, which is efficient on CPUs/GPUs but costly for ASICs. \\ (iv) Finalization: After all rounds, the state is converted back to bytes. One last bit manipulation is applied. A final BLAKE3 hash is computed on the result to produce the 256-bit output hash.
 
-Proof-of-History (PoH) introduces a verifiable record of the time between events, enabling nodes to agree on the sequence of transactions without the need for real-time block mining. PoH acts as a cryptographic clock, providing a historical record that can be independently verified by any node, thus maintaining the integrity of the transaction order. This significantly reduces energy consumption and increases transaction throughput, supporting Vecno’s goal of sub-second transaction finality.
-
-To augment security and efficiency, Vecno implements a custom PoW algorithm named \textbf{MemHash}. This algorithm combines the high-performance Blake3 hashing function with a memory-hard hashing process, optimized for CPU and GPU mining to ensure ASIC resistance and broader participation. The following subsections detail the MemHash algorithm and its integration with PoH and BlockDAG\@.
-
-\subsection{MemHash Algorithm}
-
-The MemHash algorithm is a memory-hard PoW mechanism designed to secure the Vecno blockchain while promoting decentralization, efficiency, and resistance to specialized hardware (ASICs). The algo is based of Blake3 cryptographic hash functionality, known for its speed and security, combined with a memory-intensive hashing process to deter ASIC dominance.
+Miners repeatedly increment the nonce (and sometimes adjust the timestamp slightly) until the final hash meets the network's difficulty target (e.g., starts with enough zero bits). This trial-and-error process requires real computational work, securing the chain. By combining fast BLAKE3 iterations with data-dependent memory accesses and variable rounds, MemHash is tunable, secure, and ASIC-resistant while remaining simple to implement and verify.
 
 \subsection{Comparison with Traditional Algorithms}
+MemHash offers clear advantages over classic PoW algorithms like SHA-256 (Bitcoin) or Keccak (pre-PoS Ethereum):
 
-MemHash outperforms traditional PoW algorithms like Keccak (used in Ethereum’s pre-PoS era):
 \begin{itemize}
-    \item \textbf{Faster Performance}: Blake3 achieves up to 10 GB/s per core, compared to Keccak’s 0.3 GB/s, enabling faster block validation.
-    \item \textbf{Simplified Design}: Blake3, based on the ChaCha cryptographic function, minimizes implementation errors and vulnerabilities.
-    \item \textbf{Higher Security}: Blake3’s 256-bit security offers robust protection against various attack vectors, including potential quantum computing threats.
+\item \textbf{Much Faster}: BLAKE3 can process data at speeds up to 10 GB/s per core—far exceeding SHA-256 (~0.5 GB/s) or Keccak (~0.3 GB/s). This enables quicker puzzle solving and validation.
+\item \textbf{Memory-Hard Design}: Unlike pure computation-heavy algorithms, MemHash's S-box lookups deter ASIC dominance, keeping mining accessible to consumer hardware.
+\item \textbf{Stronger Security}: BLAKE3 provides 256-bit security with a modern design resistant to known attacks, including better margins against future threats like quantum computing.
+\item \textbf{Lower Risk of Bugs}: BLAKE3's simple, well-audited structure reduces implementation vulnerabilities.
 \end{itemize}
 
-By combining MemHash with PoH and BlockDAG, Vecno achieves a blockchain that is secure, scalable, and energy-efficient, making it an attractive platform for deploying decentralized applications that demand both speed and reliability.
+When paired with Proof-of-History and BlockDAG, MemHash enables Vecno to deliver high security without the full energy cost of constant traditional PoW.
 
 \newpage
 
 \section{Vecno Foundation}
 
 The Vecno Foundation is a registered company that manages the daily operations, development, and overall maintenance of the Vecno blockchain and its associated services. The Foundation plays a pivotal role in ensuring the blockchain's functionality, security, and scalability, while also driving user engagement and ecosystem growth.
+\\Vecno Foundation is registered with the organisation number 933 980 073, for more information about the company visit the \href{https://virksomhet.brreg.no/en/oppslag/enheter/933980073}{Brønnøysund Register Centre}.
 
 \vspace{0.3cm}
 
-\subsection{Membership and Services}\label{sec1.1} 
+\subsection{Membership and Services}\label{sec2.1} 
 
 Joining the Vecno Foundation as a member provides individuals or organizations with partial ownership and access to exclusive services tailored to enhance participation in the Vecno ecosystem. Membership requires an initial deposit equivalent to 1,000 USD in Vecno coins and an annual contribution of 100 USD in Vecno coins. Members gain the following benefits:\\ (i) Regular Progress Updates: Weekly reports providing detailed insights into the Vecno blockchain’s advancements and ongoing developments.\\ (ii) Comprehensive Educational Resources: Unlimited access to learning materials designed to expand understanding of Vecno and blockchain technology.\\ (iii) Continuous Technical Assistance: Round-the-clock support services to address any technical issues members may encounter.\\ (iv) Annual Profit Distribution: Eligibility to receive a portion of the Vecno Foundation’s yearly profits.\\ (v) Governance Participation: The right to vote on key decisions affecting Vecno’s operations, providing a decentralized governance model.
 
 \vspace{0.3cm}
 
-\subsection{Fees and Revenue}\label{sec1.2}
+\subsection{Fees and Revenue}\label{sec2.2}
 
 The Vecno Foundation manages the blockchain’s financial resources to ensure long-term sustainability and growth. Revenue is generated through various fees, partnership fees, membership fees, and profit-sharing. These funds are allocated to the following key areas:\\ (i) DApp Development Support: Comprehensive support is offered for developers building decentralized applications (DApps) on the Vecno network, from concept to deployment.\\ (ii) Management: A dedicated team handles day-to-day blockchain operations, ensuring smooth functionality and addressing any operational needs.\\ (iii) Community Onboarding: The Foundation offers training programs for new members, ensuring they can contribute to and benefit from the Vecno ecosystem.
 
 \vspace{0.3cm}
 
 
-\subsection{Treasury}\label{sec1.3}
+\subsection{Treasury}\label{sec2.3}
 
 The Vecno Foundation manages the blockchain's financial resources with a total premine of 15 million coins, representing 7.5 percent of the total supply. Here's how these funds are distributed:\\ (i) Community Donation Offering: 10 million coins are dedicated to the community, aiming to raise capital and increase community involvement in the project.\\ (ii) Vecno Foundation Development Fund: 3 million coins are set aside for the Vecno Foundation to cover future development costs, operational expenses, and other foundational activities.\\ (iii) Vecno Foundation Listing Fund: 1 million coins are set aside for the Vecno Foundation to cover listing costs, which will be paired with some of the capital raised from the community fund.\\ (iiii) Vecno Foundation Team Treasury: 1 million coins which is reserved for the Vecno Blockchain Development team and founders.
 
@@ -226,7 +224,7 @@ This allocation of the premine helps with growth, sustainability, and efficiency
 
 The majority of the funds raised through donations, totaling \$1,010,000.00 in USDT, is allocated to \textbf{listings and marketing}. \$60,000.00 will be dedicated to \textbf{operational costs} to support the project's ongoing activities and infrastructure.
 
-\subsection{Development Goals}\label{sec1.4}
+\subsection{Development Goals}\label{sec2.4}
 
 The Vecno Foundation is focused on pioneering a blockchain that sets new benchmarks for performance, accessibility, and innovation. The development goals prioritize creating a versatile platform that supports diverse use cases while advancing Norway’s role in blockchain technology. These objectives drive the Foundation’s roadmap to enhance the Vecno ecosystem through cutting-edge technical advancements and user-focused solutions.
 
@@ -240,12 +238,12 @@ By extending Kaspa’s Rust-based foundation with PoH and significant infrastruc
 
 \vspace{0.3cm}
 
-\subsection{Governance Model}\label{sec1.5}
+\subsection{Governance Model}\label{sec2.5}
 
 The Vecno Foundation, registered as an SA (cooperative enterprise) company under Norwegian law, oversees the governance of the Vecno blockchain, ensuring a transparent, decentralized, and community-driven approach to decision-making. Governance is structured to balance operational efficiency with the principles of decentralization, empowering members to shape the platform’s future while adhering to legal and regulatory requirements.
 
 \subsubsection{Membership and Voting Rights}
-As outlined in Section~\ref{sec1.1}, individuals or organizations can become members of the Vecno Foundation by making an initial deposit of 1,000 USD in \texttt{VE} coins and an annual contribution of 100 USD in \texttt{VE}. Membership grants partial ownership of the Foundation, conferring equal voting rights to all members, regardless of the size of their stake. This one-member-one-vote model ensures a democratic process, preventing control by a small group of large stakeholders and focuses inclusivity.
+As outlined in Section~\ref{sec2.1}, individuals or organizations can become members of the Vecno Foundation by making an initial deposit of 1,000 USD in \texttt{VE} coins and an annual contribution of 100 USD in \texttt{VE}. Membership grants partial ownership of the Foundation, conferring equal voting rights to all members, regardless of the size of their stake. This one-member-one-vote model ensures a democratic process, preventing control by a small group of large stakeholders and focuses inclusivity.
 
 \subsubsection{Voting Process}
 Governance decisions are made through votes at the Foundation’s yearly general meeting or extraordinary meetings convened as needed. These meetings address critical matters such as protocol upgrades, funding allocations, strategic partnerships, and changes to the Foundation’s operational policies. Members are notified of meeting agendas in advance, and proposals can be submitted by any member for consideration. Voting is conducted securely, either in-person or through a blockchain-based voting system integrated into the Vecno network, ensuring transparency and immutability. Key governance activities include:
@@ -257,11 +255,9 @@ While voting rights are exclusive to Foundation members, the Vecno ecosystem enc
 
 \subsection{Legal and Operational Responsibilities}\label{sec1.6}
 
-As a registered SA (ooperative enterprise) company operating in Norway, the Vecno Foundation ensures full compliance with Norwegian legal and regulatory frameworks, supporting the secure, transparent, and sustainable operation of the Vecno blockchain. These responsibilities complement the Foundation’s governance model (Section~\ref{sec1.5}), focusing decentralization, trust, and innovation within the ecosystem. The Foundation’s key legal and operational responsibilities are as follows:
+As a registered SA (ooperative enterprise) company operating in Norway, the Vecno Foundation ensures full compliance with Norwegian legal and regulatory frameworks, supporting the secure, transparent, and sustainable operation of the Vecno blockchain. These responsibilities complement the Foundation’s governance model (Section~\ref{sec2.5}), focusing decentralization, trust, and innovation within the ecosystem. The Foundation’s key legal and operational responsibilities are as follows:
 
 (i) Operation and Maintenance: The Foundation ensures the smooth and secure operation of the Vecno blockchain, adhering to Norwegian data protection laws, including the \href{https://lovdata.no/dokument/NLE/lov/2018-06-15-38}{Personal Data Act} and GDPR regulations. Robust cybersecurity measures protect user data and maintain network integrity.\\ (ii) Feature Development: Ongoing development and implementation of new features, such as Proof of History (PoH), comply with \href{https://lovdata.no/dokument/SFE/forskrift/2003-05-21-630}{Norwegian regulations on information and communication technology (ICT)}, particularly those concerning cybersecurity and software development practices.\\ (iii) User and Developer Support: The Foundation provides comprehensive technical guidance for developers and users interacting with the Vecno blockchain, ensuring compliance with the \href{https://lovdata.no/dokument/NLE/lov/2002-06-21-34/}{Act Relating to Consumer Purchases}. Clear terms of service and privacy policies respect users’ rights under Norwegian law.\\ (iv) Marketing and Promotion: The Foundation drives awareness of Vecno through marketing initiatives, partnerships, and collaborations with other blockchain projects, adhering to \href{https://lovdata.no/dokument/NLE/lov/2009-01-09-2}{Norwegian marketing laws}. This includes maintaining transparency in advertising, avoiding misleading promotional activities, and respecting regulations on financial promotions, given the nature of cryptocurrency as a financial product.\\ (v) Financial Compliance: As a blockchain entity dealing with digital currencies, the Foundation navigates Norway’s \href{https://www.finanstilsynet.no/en/laws-and-regulations/}{financial regulations}, including the \href{https://lovdata.no/dokument/NLE/lov/2018-06-01-23}{Anti-Money Laundering Act} overseen by \href{https://www.finanstilsynet.no/en/}{Finanstilsynet} (the Financial Supervisory Authority of Norway). This involves implementing KYC (Know Your Customer) procedures for members receiving yearly profit shares, transaction monitoring, and reporting suspicious activities to prevent money laundering and terrorist financing.\\ (vi) Tax Compliance: The Foundation meets all tax obligations, including \href{https://www.skatteetaten.no/en/business-and-organisation/vat-and-duties/vat/foreign/}{VAT on services} provided within Norway, and addresses the tax implications of cryptocurrency transactions for both the Foundation and its users.\\ (vii) Intellectual Property Rights: The Foundation protects the Vecno brand, technology, and proprietary software (e.g., MemHash algorithm, PoH implementation) in accordance with Norwegian intellectual property laws, including patents, trademarks, and copyrights.\\ (viii) Environmental Responsibility: The Foundation aligns blockchain operations with \href{https://www.regjeringen.no/globalassets/departementene/ud/vedlegg/utvikling/sdg_rapport_full_en.pdf}{Norway’s sustainability commitments} and \href{https://www.regjeringen.no/en/aktuelt/a-greener-industrial-initiative-for-norway/id2996148/}{green technology initiatives}, leveraging the energy-efficient Proof of History (PoH) mechanism to minimize environmental impact.\\ (ix) Corporate Governance: The Foundation operates in compliance with the \href{https://lovdata.no/dokument/NLE/lov/2015-04-10-17/}{Norwegian Companies Act}, ensuring transparency in governance processes, including member voting and ownership documentation. Voting records and decision-making processes are maintained in accordance with GDPR and Finanstilsynet regulations, focusing on accountability and trust.
-
-\newpage
 
 \subsection{References and Footnotes}\label{sec:subsec1}
 \begin{itemize}
